@@ -1,0 +1,8 @@
+mutation {
+  addUser(input:[
+    {firstName:"John",lastName:"Doe"},
+    {firstName:"Adam",lastName:"Smith"},
+    {firstName:"Luke",lastName:"Skywalker"}
+  ]) {numUids}
+}
+

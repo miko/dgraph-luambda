@@ -1,0 +1,55 @@
+version: "3.7"
+services:
+  luambda:
+    image: luambda
+    restart: always
+    ports:
+     - 8686:8686
+    build:
+      context: ./luambda
+      dockerfile: Dockerfile
+    environment:
+      LOGLEVEL: ${LOGLEVEL-info}
+      TZ: Europe/Warsaw
+      DGRAPH_URL: http://dgraph:8080
+      DGRAPH_DQL: dgraph:9080
+      DGRAPH_SCHEMAFILE: schema.graphql
+      DGRAPH_DATAFILE: init.graphql
+      DGRAPH_SCRIPT: /app/init.lua
+    entrypoint: /app/app
+      
+  zero:
+    image: dgraph/dgraph:v20.11.0-rc1-10-g9de8f6677
+    volumes:
+      - luambda-dgraph:/dgraph
+    command: dgraph zero --my=zero:5080
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        window: 60s
+        delay: 5s
+  dgraph:
+    image: dgraph/dgraph:v20.11.0-rc1-10-g9de8f6677
+    volumes:
+      - luambda-dgraph:/dgraph
+    ports:
+      - 8900:8080
+    command: dgraph alpha --my=dgraph:7080 --zero=zero:5080 --whitelist=127.0.0.1,172.19.0.0:172.254.254.254,192.168.0.0:192.192.254.254,10.0.1.1:10.0.254.254 --graphql_lambda_url=http://luambda:8686/graphql-worker
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        window: 60s
+        delay: 5s
+
+  ratel:
+    image: dgraph/dgraph:v20.11.0-rc1-10-g9de8f6677
+    volumes:
+      - luambda-dgraph:/dgraph
+    command: dgraph-ratel -port 8080 -addr localhost:8080
+    ports:
+      - 8080:8080
+
+volumes:
+  luambda-dgraph:
